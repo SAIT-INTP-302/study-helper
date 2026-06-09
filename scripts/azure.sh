@@ -213,16 +213,35 @@ info() {
 }
 
 # ----------------------------------------------------------------------
-# down — delete everything (the whole resource group)
+# down — delete everything (the whole resource group) and purge soft-deleted
+#        resources so names are immediately available again.
 # ----------------------------------------------------------------------
 down() {
   require_login
-  echo ">> Deleting resource group '$RG' and ALL its resources..."
-  az group delete --name "$RG" --yes --no-wait
+
+  if ! az group exists --name "$RG" | grep -q true; then
+    echo ">> Resource group '$RG' does not exist — nothing to delete."
+  else
+    echo ">> Deleting resource group '$RG' and ALL its resources (waiting for completion)..."
+    az group delete --name "$RG" --yes
+    echo ">> Resource group deleted."
+  fi
+
+  # Cognitive Services (TextAnalytics / OpenAI) uses soft-delete by default.
+  # The account name is held for 48 h unless explicitly purged.
+  echo ">> Purging soft-deleted Cognitive Services account '$AI_NAME' (if any)..."
+  if az cognitiveservices account list-deleted \
+       --query "[?name=='${AI_NAME}']" -o tsv 2>/dev/null | grep -q .; then
+    az cognitiveservices account purge \
+      --name "$AI_NAME" --resource-group "$RG" --location "$LOCATION"
+    echo ">> Purged."
+  else
+    echo ">> No soft-deleted account found — skipping purge."
+  fi
+
   rm -f "$SUFFIX_FILE" "$ENV_FILE" "${ENV_FILE}.bak"
-  echo ">> Removed local $SUFFIX_FILE and $ENV_FILE"
-  echo ">> Deletion started (running in background). Verify with:"
-  echo "   az group exists --name $RG"
+  echo ">> Removed local files: $SUFFIX_FILE, $ENV_FILE"
+  echo ">> All resources fully removed."
 }
 
 # ----------------------------------------------------------------------
