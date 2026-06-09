@@ -24,13 +24,18 @@ const g = globalThis as typeof globalThis & {
   __studyhelper_tableReady?: Promise<void>;
 };
 
-const tableClient = (g.__studyhelper_tableClient ??=
-  TableClient.fromConnectionString(env.AZURE_STORAGE_CONNECTION_STRING, "notes"));
+// Lazy init: accessed on first request so next build succeeds without Azure creds.
+function getTableClient(): TableClient {
+  return (g.__studyhelper_tableClient ??=
+    TableClient.fromConnectionString(env.AZURE_STORAGE_CONNECTION_STRING, "notes"));
+}
 
 // SDK swallows 409 (table already exists); any other error propagates so
 // the first storage call surfaces connectivity failures as STORAGE_WRITE_FAILED.
-const tableReady = (g.__studyhelper_tableReady ??=
-  tableClient.createTable().then(() => {}));
+function getTableReady(): Promise<void> {
+  return (g.__studyhelper_tableReady ??=
+    getTableClient().createTable().then(() => {}));
+}
 
 export async function saveNote(input: {
   text: string;
@@ -39,7 +44,8 @@ export async function saveNote(input: {
   questions: string[];
 }): Promise<Note> {
   try {
-    await tableReady;
+    await getTableReady();
+    const tableClient = getTableClient();
     const rowKey = makeRowKey();
     const createdAt = new Date().toISOString();
     const entity = {
@@ -70,8 +76,8 @@ export async function saveNote(input: {
 
 export async function getNote(id: string): Promise<Note | null> {
   try {
-    await tableReady;
-    const entity = await tableClient.getEntity<RawEntity>("note", id);
+    await getTableReady();
+    const entity = await getTableClient().getEntity<RawEntity>("note", id);
     return {
       id: entity.rowKey,
       rawText: entity.rawText,
@@ -90,7 +96,7 @@ export async function getNote(id: string): Promise<Note | null> {
 export async function listNotes(limit = 50): Promise<NoteSummary[]> {
   try {
     // Reverse-tick rowKey means ascending lex sort = newest-first; no in-memory reverse needed.
-    const iter = tableClient
+    const iter = getTableClient()
       .listEntities<Pick<RawEntity, "rowKey" | "preview" | "createdAt">>({
         queryOptions: {
           filter: "PartitionKey eq 'note'",

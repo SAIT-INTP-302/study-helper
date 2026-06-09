@@ -8,17 +8,20 @@ import {
 import { env } from "../env";
 import { AppError } from "../errors";
 
-const client = new TextAnalysisClient(
-  env.AZURE_LANGUAGE_ENDPOINT,
-  new AzureKeyCredential(env.AZURE_LANGUAGE_KEY),
-  { retryOptions: { maxRetries: 0 } } as TextAnalysisClientOptions
-);
+let _client: TextAnalysisClient | undefined;
+function getClient(): TextAnalysisClient {
+  return (_client ??= new TextAnalysisClient(
+    env.AZURE_LANGUAGE_ENDPOINT,
+    new AzureKeyCredential(env.AZURE_LANGUAGE_KEY),
+    { retryOptions: { maxRetries: 0 } } as TextAnalysisClientOptions
+  ));
+}
 
 export async function extractKeyPhrases(text: string): Promise<string[]> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 10_000);
   try {
-    const results = await client.analyze(
+    const results = await getClient().analyze(
       "KeyPhraseExtraction",
       [text],
       "en",

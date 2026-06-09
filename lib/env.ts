@@ -6,8 +6,10 @@ function requireEnv(name: string): string {
   return v;
 }
 
+// Lazy getters: validation runs on first access (request time), not at module
+// evaluation, so `next build` succeeds without Azure credentials in the env.
 export const env = {
-  AZURE_STORAGE_CONNECTION_STRING: requireEnv("AZURE_STORAGE_CONNECTION_STRING"),
-  AZURE_LANGUAGE_KEY: requireEnv("AZURE_LANGUAGE_KEY"),
-  AZURE_LANGUAGE_ENDPOINT: requireEnv("AZURE_LANGUAGE_ENDPOINT"),
+  get AZURE_STORAGE_CONNECTION_STRING() { return requireEnv("AZURE_STORAGE_CONNECTION_STRING"); },
+  get AZURE_LANGUAGE_KEY() { return requireEnv("AZURE_LANGUAGE_KEY"); },
+  get AZURE_LANGUAGE_ENDPOINT() { return requireEnv("AZURE_LANGUAGE_ENDPOINT"); },
 };
