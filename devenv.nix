@@ -1,4 +1,10 @@
-{ pkgs, lib, config, inputs, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}:
 
 {
   languages.javascript = {
@@ -13,7 +19,7 @@
     pkgs.azure-cli
   ];
 
-  scripts.azure.exec = builtins.loadFile ./azure.sh;
+  scripts.azure.exec = builtins.readFile ./scripts/azure.sh;
 
   # See full reference at https://devenv.sh/reference/options/
 }

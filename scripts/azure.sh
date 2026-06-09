@@ -39,7 +39,7 @@ WEBAPP="app-${PROJECT}-${SUFFIX}"     # Web App (public URL host)
 STORAGE_SKU="Standard_LRS"
 AI_SKU="F0"                           # F0 = free tier for Language; use S for more
 PLAN_SKU="B1"                         # F1 = free (limited); B1 = basic, reliable
-NODE_RUNTIME="NODE:20-lts"            # verify: az webapp list-runtimes --os linux
+NODE_RUNTIME="NODE:24-lts"            # verify: az webapp list-runtimes -o table | grep NODE
 
 ENV_FILE=".env.local"                 # local dev env file (Next.js convention)
 
@@ -84,12 +84,14 @@ EOF
 
   # Best-effort guard: make sure the env file can't be committed.
   if [[ -d .git || -f .gitignore ]]; then
-    if ! grep -qxF "$ENV_FILE" .gitignore 2>/dev/null; then
-      echo "$ENV_FILE" >> .gitignore
-      echo "${ENV_FILE}.bak" >> .gitignore
-      echo "$SUFFIX_FILE" >> .gitignore
-      echo ">> Added $ENV_FILE, ${ENV_FILE}.bak, $SUFFIX_FILE to .gitignore"
-    fi
+    local added=()
+    for entry in "$ENV_FILE" "${ENV_FILE}.bak" "$SUFFIX_FILE"; do
+      if ! grep -qxF "$entry" .gitignore 2>/dev/null; then
+        echo "$entry" >> .gitignore
+        added+=("$entry")
+      fi
+    done
+    [[ ${#added[@]} -gt 0 ]] && echo ">> Added to .gitignore: ${added[*]}"
   fi
 }
 
@@ -98,18 +100,31 @@ EOF
 # ----------------------------------------------------------------------
 up() {
   require_login
-  echo ">> Creating resource group: $RG ($LOCATION)"
-  az group create --name "$RG" --location "$LOCATION" -o none
 
-  echo ">> Creating storage account: $STORAGE"
-  az storage account create \
-    --name "$STORAGE" --resource-group "$RG" --location "$LOCATION" \
-    --sku "$STORAGE_SKU" --kind StorageV2 -o none
+  if az group exists --name "$RG" | grep -q true; then
+    echo ">> Resource group already exists: $RG (reusing)"
+  else
+    echo ">> Creating resource group: $RG ($LOCATION)"
+    az group create --name "$RG" --location "$LOCATION" -o none
+  fi
 
-  echo ">> Creating Azure AI Language resource: $AI_NAME"
-  az cognitiveservices account create \
-    --name "$AI_NAME" --resource-group "$RG" --location "$LOCATION" \
-    --kind TextAnalytics --sku "$AI_SKU" --yes -o none
+  if az storage account show --name "$STORAGE" --resource-group "$RG" -o none 2>/dev/null; then
+    echo ">> Storage account already exists: $STORAGE (reusing)"
+  else
+    echo ">> Creating storage account: $STORAGE"
+    az storage account create \
+      --name "$STORAGE" --resource-group "$RG" --location "$LOCATION" \
+      --sku "$STORAGE_SKU" --kind StorageV2 -o none
+  fi
+
+  if az cognitiveservices account show --name "$AI_NAME" --resource-group "$RG" -o none 2>/dev/null; then
+    echo ">> Azure AI Language resource already exists: $AI_NAME (reusing)"
+  else
+    echo ">> Creating Azure AI Language resource: $AI_NAME"
+    az cognitiveservices account create \
+      --name "$AI_NAME" --resource-group "$RG" --location "$LOCATION" \
+      --kind TextAnalytics --sku "$AI_SKU" --yes -o none
+  fi
 
   # --- Alternative: Azure OpenAI instead of AI Language ---------------
   # az cognitiveservices account create \
@@ -118,15 +133,23 @@ up() {
   # (then deploy a model with: az cognitiveservices account deployment create ...)
   # --------------------------------------------------------------------
 
-  echo ">> Creating App Service plan: $PLAN ($PLAN_SKU, Linux)"
-  az appservice plan create \
-    --name "$PLAN" --resource-group "$RG" \
-    --sku "$PLAN_SKU" --is-linux -o none
+  if az appservice plan show --name "$PLAN" --resource-group "$RG" -o none 2>/dev/null; then
+    echo ">> App Service plan already exists: $PLAN (reusing)"
+  else
+    echo ">> Creating App Service plan: $PLAN ($PLAN_SKU, Linux)"
+    az appservice plan create \
+      --name "$PLAN" --resource-group "$RG" \
+      --sku "$PLAN_SKU" --is-linux -o none
+  fi
 
-  echo ">> Creating Web App: $WEBAPP"
-  az webapp create \
-    --name "$WEBAPP" --resource-group "$RG" \
-    --plan "$PLAN" --runtime "$NODE_RUNTIME" -o none
+  if az webapp show --name "$WEBAPP" --resource-group "$RG" -o none 2>/dev/null; then
+    echo ">> Web App already exists: $WEBAPP (reusing)"
+  else
+    echo ">> Creating Web App: $WEBAPP"
+    az webapp create \
+      --name "$WEBAPP" --resource-group "$RG" \
+      --plan "$PLAN" --runtime "$NODE_RUNTIME" -o none
+  fi
 
   echo ">> Pushing secrets into App Settings (server-side, never in repo)"
   local conn key endpoint

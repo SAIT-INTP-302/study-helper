@@ -52,5 +52,9 @@ devenv.local.yaml
 .pre-commit-config.yaml
 
 # custom
-.azure-suffix
 *.lock
+
+# Project
+.azure-suffix
+.env.local
+.env.local.bak
