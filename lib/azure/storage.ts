@@ -100,7 +100,7 @@ export async function listNotes(limit = 50): Promise<NoteSummary[]> {
       .byPage({ maxPageSize: limit });
 
     const page = await iter.next();
-    const items = page.value ?? [];
+    const items: Pick<RawEntity, "rowKey" | "preview" | "createdAt">[] = page.value ?? [];
     return items.map((e) => ({
       id: e.rowKey,
       preview: e.preview,
