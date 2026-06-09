@@ -9,5 +9,11 @@
     };
   };
 
+  packages = [
+    pkgs.azure-cli
+  ];
+
+  scripts.azure.exec = builtins.loadFile ./azure.sh;
+
   # See full reference at https://devenv.sh/reference/options/
 }
