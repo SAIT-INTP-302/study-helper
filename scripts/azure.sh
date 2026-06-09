@@ -202,6 +202,14 @@ info() {
   # Regenerate the local env file so teammates can pull secrets for an
   # already-provisioned stack (clone repo -> ./azure-setup.sh info -> run).
   write_env "$conn" "$key" "$endpoint"
+
+  echo ">> Syncing secrets to App Settings (idempotent)"
+  az webapp config appsettings set --name "$WEBAPP" --resource-group "$RG" \
+    --settings \
+      AZURE_STORAGE_CONNECTION_STRING="$conn" \
+      AZURE_LANGUAGE_KEY="$key" \
+      AZURE_LANGUAGE_ENDPOINT="$endpoint" \
+    -o none
 }
 
 # ----------------------------------------------------------------------
