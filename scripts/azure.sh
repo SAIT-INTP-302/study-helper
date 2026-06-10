@@ -6,6 +6,7 @@
 # Usage:
 #   ./azure-setup.sh up      # create all resources + print env vars
 #   ./azure-setup.sh info    # print endpoints/keys for an existing stack
+#   ./azure-setup.sh deploy  # build + zip-deploy the Next.js app to the Web App
 #   ./azure-setup.sh down    # delete the resource group (everything)
 #
 # Prereqs: Azure CLI installed and logged in (`az login`).
@@ -40,8 +41,11 @@ STORAGE_SKU="Standard_LRS"
 AI_SKU="F0"                           # F0 = free tier for Language; use S for more
 PLAN_SKU="B1"                         # F1 = free (limited); B1 = basic, reliable
 NODE_RUNTIME="NODE:24-lts"            # verify: az webapp list-runtimes -o table | grep NODE
+STARTUP_CMD="node server.js"          # standalone Next.js entrypoint
 
 ENV_FILE=".env.local"                 # local dev env file (Next.js convention)
+DEPLOY_DIR=".deploy"                  # staging dir for zip-deploy payload
+DEPLOY_ZIP="deploy.zip"               # zip artifact uploaded to App Service
 
 # ----------------------------------------------------------------------
 # helpers
@@ -151,6 +155,10 @@ up() {
       --plan "$PLAN" --runtime "$NODE_RUNTIME" -o none
   fi
 
+  echo ">> Setting startup command: $STARTUP_CMD"
+  az webapp config set --name "$WEBAPP" --resource-group "$RG" \
+    --startup-file "$STARTUP_CMD" -o none
+
   echo ">> Pushing secrets into App Settings (server-side, never in repo)"
   local conn key endpoint
   conn="$(az storage account show-connection-string \
@@ -213,6 +221,55 @@ info() {
 }
 
 # ----------------------------------------------------------------------
+# deploy — build the Next.js app (standalone output), zip it, and push to
+#          the existing Web App via az webapp deploy.
+# ----------------------------------------------------------------------
+deploy() {
+  require_login
+
+  if ! az webapp show --name "$WEBAPP" --resource-group "$RG" -o none 2>/dev/null; then
+    echo "Web App '$WEBAPP' not found in '$RG'. Run '$0 up' first." >&2
+    exit 1
+  fi
+
+  echo ">> Building Next.js app (bun run build)"
+  bun install
+  bun run build
+
+  if [[ ! -f .next/standalone/server.js ]]; then
+    echo "Build did not produce .next/standalone/server.js." >&2
+    echo "Ensure next.config.ts has \`output: 'standalone'\`." >&2
+    exit 1
+  fi
+
+  echo ">> Staging deploy payload at $DEPLOY_DIR"
+  rm -rf "$DEPLOY_DIR" "$DEPLOY_ZIP"
+  mkdir -p "$DEPLOY_DIR"
+  cp -r .next/standalone/. "$DEPLOY_DIR/"
+  mkdir -p "$DEPLOY_DIR/.next"
+  cp -r .next/static "$DEPLOY_DIR/.next/static"
+  if [[ -d public ]]; then
+    cp -r public "$DEPLOY_DIR/public"
+  fi
+
+  echo ">> Zipping deploy payload to $DEPLOY_ZIP"
+  ( cd "$DEPLOY_DIR" && zip -qr "../$DEPLOY_ZIP" . )
+
+  echo ">> Ensuring startup command is set: $STARTUP_CMD"
+  az webapp config set --name "$WEBAPP" --resource-group "$RG" \
+    --startup-file "$STARTUP_CMD" -o none
+
+  echo ">> Uploading to App Service via az webapp deploy"
+  az webapp deploy --name "$WEBAPP" --resource-group "$RG" \
+    --src-path "$DEPLOY_ZIP" --type zip -o none
+
+  echo ""
+  echo "=================================================================="
+  echo " DEPLOYED. https://${WEBAPP}.azurewebsites.net"
+  echo "=================================================================="
+}
+
+# ----------------------------------------------------------------------
 # down — delete everything (the whole resource group) and purge soft-deleted
 #        resources so names are immediately available again.
 # ----------------------------------------------------------------------
@@ -239,15 +296,16 @@ down() {
     echo ">> No soft-deleted account found — skipping purge."
   fi
 
-  rm -f "$SUFFIX_FILE" "$ENV_FILE" "${ENV_FILE}.bak"
-  echo ">> Removed local files: $SUFFIX_FILE, $ENV_FILE"
+  rm -rf "$SUFFIX_FILE" "$ENV_FILE" "${ENV_FILE}.bak" "$DEPLOY_DIR" "$DEPLOY_ZIP"
+  echo ">> Removed local files: $SUFFIX_FILE, $ENV_FILE, $DEPLOY_DIR, $DEPLOY_ZIP"
   echo ">> All resources fully removed."
 }
 
 # ----------------------------------------------------------------------
 case "${1:-}" in
-  up)   up ;;
-  down) down ;;
-  info) info ;;
-  *)    echo "Usage: $0 {up|down|info}"; exit 1 ;;
+  up)     up ;;
+  down)   down ;;
+  info)   info ;;
+  deploy) deploy ;;
+  *)      echo "Usage: $0 {up|down|info|deploy}"; exit 1 ;;
 esac

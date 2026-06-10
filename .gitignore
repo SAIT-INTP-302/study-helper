@@ -58,3 +58,5 @@ devenv.local.yaml
 .azure-suffix
 .env.local
 .env.local.bak
+.deploy/
+deploy.zip
