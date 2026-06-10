@@ -119,6 +119,29 @@ up() {
 
   if az cognitiveservices account show --name "$AI_NAME" --resource-group "$RG" -o none 2>/dev/null; then
     echo ">> Azure AI Language resource already exists: $AI_NAME (reusing)"
+  elif az cognitiveservices account list-deleted \
+         --query "[?name=='${AI_NAME}']" -o tsv 2>/dev/null | grep -q .; then
+    echo ">> Soft-deleted Cognitive Services account found: $AI_NAME"
+    echo "   (r) Restore it  — recover the existing account and its data"
+    echo "   (p) Purge + new — permanently delete it and provision a fresh one"
+    read -rp "   Choice [r/p]: " cs_choice
+    case "${cs_choice,,}" in
+      p)
+        echo ">> Purging $AI_NAME..."
+        az cognitiveservices account purge \
+          --name "$AI_NAME" --resource-group "$RG" --location "$LOCATION"
+        echo ">> Creating new Azure AI Language resource: $AI_NAME"
+        az cognitiveservices account create \
+          --name "$AI_NAME" --resource-group "$RG" --location "$LOCATION" \
+          --kind TextAnalytics --sku "$AI_SKU" --yes -o none
+        ;;
+      *)
+        echo ">> Restoring $AI_NAME..."
+        az cognitiveservices account recover \
+          --name "$AI_NAME" --resource-group "$RG" --location "$LOCATION" -o none
+        echo ">> Restored."
+        ;;
+    esac
   else
     echo ">> Creating Azure AI Language resource: $AI_NAME"
     az cognitiveservices account create \
@@ -215,21 +238,29 @@ info() {
 # ----------------------------------------------------------------------
 # down — delete everything (the whole resource group) and purge soft-deleted
 #        resources so names are immediately available again.
+#
+# Flags:
+#   --wait   kick off async delete, then poll until the group is gone and
+#            purge the soft-deleted Cognitive Services account automatically.
 # ----------------------------------------------------------------------
 down() {
+  local nowait="--no-wait"
+  [[ "${1:-}" == "--wait" ]] && nowait=""
+
   require_login
 
   if ! az group exists --name "$RG" | grep -q true; then
     echo ">> Resource group '$RG' does not exist — nothing to delete."
   else
-    echo ">> Deleting resource group '$RG' and ALL its resources (waiting for completion)..."
-    az group delete --name "$RG" --yes
+    echo ">> Deleting resource group '$RG' and ALL its resources..."
+    az group delete --name "$RG" --yes $nowait
     echo ">> Resource group deleted."
   fi
 
-  # Cognitive Services (TextAnalytics / OpenAI) uses soft-delete by default.
-  # The account name is held for 48 h unless explicitly purged.
-  echo ">> Purging soft-deleted Cognitive Services account '$AI_NAME' (if any)..."
+  # Cognitive Services uses soft-delete; the name is held 48 h unless purged.
+  # Without --wait the group delete may still be in flight, so the soft-deleted
+  # account may not appear yet — re-run with --wait to purge automatically.
+  echo ">> Checking for soft-deleted Cognitive Services account '$AI_NAME'..."
   if az cognitiveservices account list-deleted \
        --query "[?name=='${AI_NAME}']" -o tsv 2>/dev/null | grep -q .; then
     az cognitiveservices account purge \
@@ -241,13 +272,13 @@ down() {
 
   rm -f "$SUFFIX_FILE" "$ENV_FILE" "${ENV_FILE}.bak"
   echo ">> Removed local files: $SUFFIX_FILE, $ENV_FILE"
-  echo ">> All resources fully removed."
+  echo ">> Done."
 }
 
 # ----------------------------------------------------------------------
 case "${1:-}" in
   up)   up ;;
-  down) down ;;
+  down) down "${2:-}" ;;
   info) info ;;
-  *)    echo "Usage: $0 {up|down|info}"; exit 1 ;;
+  *)    echo "Usage: $0 {up|down [--wait]|info}"; exit 1 ;;
 esac
