@@ -34,7 +34,15 @@ function getTableClient(): TableClient {
 // the first storage call surfaces connectivity failures as STORAGE_WRITE_FAILED.
 function getTableReady(): Promise<void> {
   return (g.__studyhelper_tableReady ??=
-    getTableClient().createTable().then(() => {}));
+    getTableClient()
+      .createTable()
+      .then(() => { })
+      .catch((err) => {
+        // 409 = already exists → ignore
+        if (err?.statusCode === 409) return;
+        throw err;
+      })
+  );
 }
 
 export async function saveNote(input: {
@@ -95,6 +103,7 @@ export async function getNote(id: string): Promise<Note | null> {
 
 export async function listNotes(limit = 50): Promise<NoteSummary[]> {
   try {
+    await getTableReady();
     // Reverse-tick rowKey means ascending lex sort = newest-first; no in-memory reverse needed.
     const iter = getTableClient()
       .listEntities<Pick<RawEntity, "rowKey" | "preview" | "createdAt">>({
