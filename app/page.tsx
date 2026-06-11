@@ -76,7 +76,9 @@ export default function Home() {
         <div className="space-y-6">
           <section>
             <h2 className="font-semibold text-lg mb-2">Summary</h2>
-            <p className="bg-blue-50 border border-blue-200 rounded p-4 text-sm">
+            <p className="rounded p-4 text-sm border
+               bg-white text-gray-800 border-gray-200
+               dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
               {result.summary}
             </p>
           </section>
@@ -88,7 +90,11 @@ export default function Home() {
                 {result.keyPhrases.map((phrase) => (
                   <span
                     key={phrase}
-                    className="bg-gray-100 rounded-full px-3 py-1 text-sm"
+                    className="
+                       rounded-full px-3 py-1 text-sm border
+                       bg-gray-100 text-gray-800 border-gray-200
+                       dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700
+                     "
                   >
                     {phrase}
                   </span>

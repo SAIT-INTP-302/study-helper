@@ -30,39 +30,62 @@ export default function NoteDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <p className="p-8 text-center">Loading note…</p>;
-  if (error || !note) return <p className="p-8 text-center text-red-500">{error}</p>;
+  if (loading)
+    return (
+      <p className="p-8 text-center text-gray-500 dark:text-gray-400">
+        Loading note…
+      </p>
+    );
+
+  if (error || !note)
+    return (
+      <p className="p-8 text-center text-red-500 dark:text-red-400">
+        {error}
+      </p>
+    );
 
   return (
-    <main className="max-w-2xl mx-auto p-8 space-y-6">
-      <Link href="/notes" className="text-blue-600 hover:underline text-sm">
+    <main className="max-w-2xl mx-auto p-8 space-y-6 bg-white dark:bg-gray-950 text-black dark:text-white min-h-screen">
+
+      {/* Back */}
+      <Link
+        href="/notes"
+        className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+      >
         ← All Notes
       </Link>
 
-      <p className="text-gray-400 text-sm">
+      {/* Date */}
+      <p className="text-gray-500 dark:text-gray-400 text-sm">
         Saved on {new Date(note.createdAt).toLocaleDateString()}
       </p>
 
+      {/* Original Notes */}
       <section>
         <h2 className="font-semibold text-lg mb-2">Original Notes</h2>
-        <pre className="bg-gray-50 border rounded p-4 text-sm whitespace-pre-wrap">
+        <pre className="bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded p-4 text-sm whitespace-pre-wrap text-black dark:text-gray-200">
           {note.rawText}
         </pre>
       </section>
 
+      {/* AI Summary */}
       <section>
         <h2 className="font-semibold text-lg mb-2">AI Summary</h2>
-        <p className="bg-blue-50 border border-blue-200 rounded p-4 text-sm">
+        <p className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded p-4 text-sm text-black dark:text-gray-100">
           {note.summary}
         </p>
       </section>
 
+      {/* Key Phrases */}
       {note.keyPhrases.length > 0 && (
         <section>
           <h2 className="font-semibold text-lg mb-2">Key Phrases</h2>
           <div className="flex flex-wrap gap-2">
             {note.keyPhrases.map((phrase) => (
-              <span key={phrase} className="bg-gray-100 rounded-full px-3 py-1 text-sm">
+              <span
+                key={phrase}
+                className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1 text-sm"
+              >
                 {phrase}
               </span>
             ))}
@@ -70,10 +93,11 @@ export default function NoteDetailPage() {
         </section>
       )}
 
+      {/* Questions */}
       {note.questions.length > 0 && (
         <section>
           <h2 className="font-semibold text-lg mb-2">Review Questions</h2>
-          <ol className="list-decimal list-inside space-y-2 text-sm">
+          <ol className="list-decimal list-inside space-y-2 text-sm text-black dark:text-gray-200">
             {note.questions.map((q, i) => (
               <li key={i}>{q}</li>
             ))}

@@ -32,7 +32,7 @@ export default function NotesPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // loading state
+  // loading 
   if (loading) {
     return (
       <p className="p-8 text-center text-gray-500">
