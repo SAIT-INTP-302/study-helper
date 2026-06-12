@@ -40,8 +40,20 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const notes = await listNotes();
-    return Response.json({ notes });
-  } catch (err) {
-    return toResponse(err);
+
+    return Response.json({
+      notes: Array.isArray(notes) ? notes : [],
+    });
+  } catch (err: any) {
+
+    if (
+      err?.statusCode === 404 ||
+      err?.code === "TableNotFound" ||
+      err?.name === "TableNotFound"
+    ) {
+      return Response.json({ notes: [] });
+    }
+
+    return toResponse(err); // real failure
   }
 }

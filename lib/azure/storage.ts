@@ -34,7 +34,7 @@ function getTableClient(): TableClient {
 // the first storage call surfaces connectivity failures as STORAGE_WRITE_FAILED.
 function getTableReady(): Promise<void> {
   return (g.__studyhelper_tableReady ??=
-    getTableClient().createTable().then(() => {}));
+    getTableClient().createTable().then(() => { }));
 }
 
 export async function saveNote(input: {
@@ -95,7 +95,6 @@ export async function getNote(id: string): Promise<Note | null> {
 
 export async function listNotes(limit = 50): Promise<NoteSummary[]> {
   try {
-    // Reverse-tick rowKey means ascending lex sort = newest-first; no in-memory reverse needed.
     const iter = getTableClient()
       .listEntities<Pick<RawEntity, "rowKey" | "preview" | "createdAt">>({
         queryOptions: {
@@ -107,12 +106,20 @@ export async function listNotes(limit = 50): Promise<NoteSummary[]> {
 
     const page = await iter.next();
     const items: Pick<RawEntity, "rowKey" | "preview" | "createdAt">[] = page.value ?? [];
+
     return items.map((e) => ({
       id: e.rowKey,
       preview: e.preview,
       createdAt: e.createdAt,
     }));
-  } catch (err) {
+  } catch (err: any) {
+    if (
+      err?.statusCode === 404 ||
+      err?.code === "TableNotFound"
+    ) {
+      return [];
+    }
+
     console.error("[listNotes]", err);
     throw new AppError("STORAGE_READ_FAILED", 502, "Failed to list notes");
   }
