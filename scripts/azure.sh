@@ -58,6 +58,18 @@ HOSTING=false
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+
+# Detect the first available package manager in PATH (bun > pnpm > yarn > npm).
+detect_pm() {
+  for pm in bun pnpm yarn npm; do
+    if command -v "$pm" >/dev/null 2>&1; then
+      echo "$pm"
+      return
+    fi
+  done
+  echo "npm"  # fallback; npm ships with Node so it should always be present
+}
+
 require_login() {
   if ! az account show >/dev/null 2>&1; then
     echo "Not logged in. Run: az login" >&2
@@ -229,8 +241,10 @@ up() {
     echo " DONE (no hosting — local dev only)"
   fi
   echo "=================================================================="
+  local pm
+  pm="$(detect_pm)"
   echo " Secrets written to $ENV_FILE. To run locally:"
-  echo "     npm install && npm run dev"
+  echo "     $pm install && $pm run dev"
   echo "=================================================================="
 }
 
@@ -288,9 +302,11 @@ deploy() {
     exit 1
   fi
 
-  echo ">> Building Next.js app (bun run build)"
-  bun install
-  bun run build
+  local pm
+  pm="$(detect_pm)"
+  echo ">> Building Next.js app ($pm run build)"
+  "$pm" install
+  "$pm" run build
 
   if [[ ! -f .next/standalone/server.js ]]; then
     echo "Build did not produce .next/standalone/server.js." >&2
