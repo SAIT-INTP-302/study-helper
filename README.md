@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Study Helper
 
-## Getting Started
+Study Helper is a web application designed to help students review course notes more efficiently. Users can paste their course notes into the app and receive a short summary, important key phrases, and simple review questions.
 
-First, run the development server:
+Users can also save their notes and review previous study results later.
+
+## Features
+
+* Generate a short summary from course notes
+* Extract important key phrases
+* Generate simple review questions for studying
+* Save notes and generated results for later review
+* View saved notes
+
+## Azure Services & Architecture
+
+### Azure Services
+
+The Study Helper application uses Microsoft Azure to support AI-powered note analysis, cloud storage, and deployment.
+
+* **Azure AI Language**: Used to analyze submitted course notes and extract key phrases.
+* **Azure Table Storage**: Used to save notes, summaries, key phrases, review questions, and timestamps.
+* **Azure App Service**: Used to host the deployed web application.
+* **Azure App Settings**: Used to store environment variables such as service keys and connection strings.
+
+### Application Architecture
+
+1. The user enters course notes into the notes input field.
+2. The Next.js frontend sends the entered note to the backend API route.
+3. The backend sends the note text to Azure AI Language.
+4. Azure AI Language extracts key phrases from the note text.
+5. The application creates a short summary and simple review questions.
+6. The note, summary, key phrases, review questions, and timestamp are saved in Azure Table Storage.
+7. The frontend displays the results to the user.
+
+## Environment Variables
+
+This project uses environment variables for Azure service keys and connection strings.
+
+Examples include:
+
+* Azure Storage connection string
+* Azure AI Language key
+* Azure AI Language endpoint
+* Azure web app URL
+
+Real keys and connection strings should not be committed to GitHub.
+
+## Run Locally
+
+To run the project locally, install the required dependencies and start the development server.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open the local development URL in a browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+The application is intended to be deployed on Azure App Service for the midterm project deliverable.
 
-To learn more about Next.js, take a look at the following resources:
+The deployed application URL should be shared as part of the final submission.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Known Issues & Limitations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+* The application supports pasted text only.
+* PDF, Word document, image, and voice input are not supported.
+* AI-assisted summaries, key phrases, and review questions should be reviewed by the user.
+* The AI output may be incomplete, inaccurate, or may miss important information.
+* Internet connection is required because the application uses Azure services.
+* Performance may vary depending on the length and clarity of the submitted notes.
 
-## Deploy on Vercel
+## Responsible AI Note
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Study Helper is designed as a study support tool. It should not replace the student’s own review or understanding. Users should avoid submitting private information, grades, student IDs, or confidential course content.
