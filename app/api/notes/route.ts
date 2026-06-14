@@ -44,6 +44,7 @@ export async function GET() {
     return Response.json({
       notes: Array.isArray(notes) ? notes : [],
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
 
     if (
