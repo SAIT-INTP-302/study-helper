@@ -112,6 +112,7 @@ export async function listNotes(limit = 50): Promise<NoteSummary[]> {
       preview: e.preview,
       createdAt: e.createdAt,
     }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     if (
       err?.statusCode === 404 ||
