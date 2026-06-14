@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+Authors: Eric Singer, Luna McCormick, Nara Park, Rowan Feland, Taylor O'Brien, Zeynep Camgoz.
+
+## About
+
+This study helper was developed with the goal of helping university students. The program is meant for students to input their own notes into the AI to recieve helpful resources for studying. these resources include, summarization, study questions, and more!
+we recommend using English and clear notes that do not make use of slang or shorthand.
+
+
 ## Getting Started
 
 First, run the development server:
